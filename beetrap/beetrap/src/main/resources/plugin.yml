@@ -1,0 +1,6 @@
+name: beetrap
+version: '1.0'
+main: edu.rochester.beetrap.Main
+api-version: '1.20'
+commands:
+  garden:
