@@ -1,66 +1,39 @@
 package edu.rochester.beetrap.controller;
 
 import edu.rochester.beetrap.Main;
-import edu.rochester.beetrap.model.Flower;
 import edu.rochester.beetrap.model.Garden;
 import edu.rochester.beetrap.service.GardenService;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.FallingBlock;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
-import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.util.Vector;
 
 public class GardenController implements CommandExecutor, Listener {
     private final Main main;
     private final GardenService gs;
+    private final BeetrapWorld bw;
+    private final TabCompleter tc;
+    private Game game;
 
     public GardenController(Main main) {
         this.main = main;
         this.gs = new GardenService(main);
-    }
-
-    public void drawQuad(World world, int xCenter, int yCenter, int zCenter,
-            int sideToCenterLength, Material material) {
-        // Calculate the corner coordinates based in the center and half side length
-        int xStart = xCenter - sideToCenterLength - 1;
-        int xEnd = xCenter + sideToCenterLength + 1;
-        int zStart = zCenter - sideToCenterLength - 1;
-        int zEnd = zCenter + sideToCenterLength + 1;
-
-        // Draw the edges of the quadrilateral
-        for(int x = xStart; x <= xEnd; x++) {
-            world.getBlockAt(x, yCenter, zStart).setType(material); // Top edge
-            world.getBlockAt(x, yCenter, zEnd).setType(material);   // Bottom edge
-        }
-        for(int z = zStart; z <= zEnd; z++) {
-            world.getBlockAt(xStart, yCenter, z).setType(material); // Left edge
-            world.getBlockAt(xEnd, yCenter, z).setType(material);   // Right edge
-        }
-    }
-
-    public void spawnFallingBlock(Garden g, Flower flower, World world, double x, double y, double z, Material material) {
-        // Create a Location object with the desired coordinates
-        Location location = new Location(world, x, y, z);
-
-        // Spawn the falling block using spawnEntity method
-        FallingBlock fallingBlock = world.spawnFallingBlock(location, material.createBlockData());
-        fallingBlock.teleport(location);
-
-        // Optional: Set additional properties
-        fallingBlock.setGravity(false); // Disable gravity
-        fallingBlock.setTicksLived(Integer.MAX_VALUE); // Prevent despawning
-
-        fallingBlock.setMetadata("garden", new FixedMetadataValue(this.main, g.getName()));
-        fallingBlock.setMetadata("flower", new FixedMetadataValue(this.main, flower.uuid()));
+        this.bw = new BeetrapWorld(main, Bukkit.getWorlds().getFirst());
+        this.main.getServer().getPluginManager().registerEvents(this, this.main);
+        this.main.getCommand("draw_quad").setExecutor(this);
+        this.main.getCommand("garden").setExecutor(this);
+        this.tc = new CommandTabCompleter(this.gs);
+        this.main.getCommand("garden").setTabCompleter(this.tc);
+        this.main.getCommand("game").setExecutor(this);
+        this.main.getCommand("game").setTabCompleter(this.tc);
     }
 
     @Override
@@ -75,7 +48,7 @@ public class GardenController implements CommandExecutor, Listener {
                     int centerZ = Integer.parseInt(args[2]);
                     int sideToCenterLength = Integer.parseInt(args[3]);
 
-                    this.drawQuad(p.getWorld(), centerX, centerY, centerZ, sideToCenterLength,
+                    this.bw.drawQuad(centerX, centerY, centerZ, sideToCenterLength,
                             Material.GLASS);
                     return true;
                 }
@@ -89,14 +62,18 @@ public class GardenController implements CommandExecutor, Listener {
                         int bottomRightX = Integer.parseInt(args[5]);
                         int bottomRightY = Integer.parseInt(args[6]);
                         int bottomRightZ = Integer.parseInt(args[7]);
-                        boolean b = gs.createGarden(name, new Vector(topLeftX, topLeftY, topLeftZ), new Vector(bottomRightX, bottomRightY, bottomRightZ));
+                        boolean b = gs.createGarden(name, new Vector(topLeftX, topLeftY, topLeftZ),
+                                new Vector(bottomRightX, bottomRightY, bottomRightZ));
 
                         if(b) {
                             p.sendMessage(
                                     "Successfully created a garden with name: \"" + name + "\".");
                         } else {
-                            p.sendMessage(ChatColor.RED + "A garden named: \"" + name + "\" already exists.");
+                            p.sendMessage(ChatColor.RED + "A garden named: \"" + name
+                                    + "\" already exists.");
                         }
+
+                        this.bw.constructGarden(name);
 
                         return true;
                     }
@@ -124,8 +101,8 @@ public class GardenController implements CommandExecutor, Listener {
                     if(args[0].equalsIgnoreCase("destroy")) {
                         String name = args[1];
                         this.gs.destroyGarden(name);
-                            p.sendMessage(
-                                    "Successfully removed the garden named: \"" + name + "\".");
+                        p.sendMessage(
+                                "Successfully removed the garden named: \"" + name + "\".");
                         return true;
                     }
 
@@ -139,22 +116,33 @@ public class GardenController implements CommandExecutor, Listener {
                         String name = args[1];
                         int n = Integer.parseInt(args[2]);
                         this.gs.generateFlowers(name, n);
-                        p.sendMessage("Successfully generated " + n + " flowers in the garden named: \"" + name + "\".");
+                        p.sendMessage(
+                                "Successfully generated " + n + " flowers in the garden named: \""
+                                        + name + "\".");
                         return true;
                     }
 
                     if(args[0].equalsIgnoreCase("save")) {
-                        p.sendMessage("Saving " + this.gs.gardenCount() + " gardens...");
+                        String filename = args[1];
+                        p.sendMessage(
+                                "Saving " + this.gs.gardenCount() + " gardens into \"" + filename
+                                        + "\"...");
                         long l = System.nanoTime();
-                        this.gs.saveGardens("gardens.json");
+                        this.gs.saveGardens(filename);
                         long m = System.nanoTime();
-                        p.sendMessage("Saving complete. Took " + ((double)(m - l) / 1000000000.) + " seconds.");
+                        p.sendMessage("Saving complete. Took " + ((double)(m - l) / 1000000000.)
+                                + " seconds.");
                         return true;
                     }
 
                     if(args[0].equalsIgnoreCase("load")) {
-                        p.sendMessage("Loading gardens...");
-                        this.gs.loadGardens("gardens.json");
+                        String filename = args[1];
+                        p.sendMessage("Loading gardens from \"" + filename + "\"...");
+                        this.gs.loadGardens(filename);
+
+                        for(String s : this.gs.getGardenNames()) {
+                            this.bw.constructGarden(s);
+                        }
                         p.sendMessage("Loading complete.");
                         return true;
                     }
@@ -162,17 +150,57 @@ public class GardenController implements CommandExecutor, Listener {
                     if(args[0].equalsIgnoreCase("draw_flowers")) {
                         String gardenName = args[1];
                         Garden garden = this.gs.getGarden(gardenName);
-                        Flower[] flowers = this.gs.getFlowers(gardenName);
-                        World world = p.getWorld();
-                        double width = garden.getBottomRight().getX() - garden.getTopLeft().getX() + 1;
-                        double length = garden.getBottomRight().getZ() - garden.getTopLeft().getZ() + 1;
+                        this.bw.drawFlowers(garden, (f) -> Material.POPPY);
+                        return true;
+                    }
 
-                        for(Flower f : flowers) {
-                            double x = garden.getTopLeft().getX() + width * f.x();
-                            double z = garden.getTopLeft().getZ() + length * f.z();
-                            p.sendMessage(String.format("Spawned a flower at (%f, %f)", x, z));
-                            this.spawnFallingBlock(garden, f, world, x, garden.getTopLeft().getBlockY(), z, Material.POPPY);
+                    if(args[0].equalsIgnoreCase("clear_flowers")) {
+                        String gardenName = args[1];
+                        this.bw.clearFlowers(gardenName);
+
+                        return true;
+                    }
+
+                    if(args[0].equalsIgnoreCase("remove_flowers")) {
+                        String gardenName = args[1];
+                        Garden g = this.gs.getGarden(gardenName);
+                        g.clearFlowers();
+
+                        return true;
+                    }
+
+                    if(args[0].equalsIgnoreCase("spawn_bee_nest")) {
+                        String gardenName = args[1];
+                        Garden g = this.gs.getGarden(gardenName);
+                        this.bw.spawnBeetrapBeeNestAsFallingBlock(g);
+
+                        return true;
+                    }
+
+                    if(args[0].equalsIgnoreCase("destroy_bee_nest")) {
+                        String gardenName = args[1];
+                        this.bw.destroyBeeNest(gardenName);
+
+                        return true;
+                    }
+                }
+
+                if(command.getName().equalsIgnoreCase("game")) {
+                    if(args[0].equalsIgnoreCase("new")) {
+                        if(this.game == null) {
+                            this.game = new Game(this.main, this.gs, this.bw, "Garden");
                         }
+
+                        return true;
+                    }
+
+                    if(args[0].equalsIgnoreCase("destroy")) {
+                        if(this.game != null) {
+                            this.game.destroy();
+                            this.game = null;
+                        }
+
+                        return true;
                     }
                 }
             }
@@ -185,5 +213,13 @@ public class GardenController implements CommandExecutor, Listener {
         }
 
         return false;
+    }
+
+    public void onPluginDisable() {
+        this.gs.saveGardens("gardens.json");
+    }
+
+    public void onPluginEnable() {
+        this.gs.loadGardens("gardens.json");
     }
 }

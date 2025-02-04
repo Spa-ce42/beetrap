@@ -52,7 +52,7 @@ public final class Flower {
         if(obj == null || obj.getClass() != this.getClass()) {
             return false;
         }
-        var that = (Flower) obj;
+        var that = (Flower)obj;
         return Objects.equals(this.uuid, that.uuid) &&
                 Double.doubleToLongBits(this.v) == Double.doubleToLongBits(that.v) &&
                 Double.doubleToLongBits(this.w) == Double.doubleToLongBits(that.w) &&

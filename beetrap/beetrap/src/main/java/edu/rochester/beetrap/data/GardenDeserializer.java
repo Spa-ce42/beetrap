@@ -13,6 +13,7 @@ import java.util.UUID;
 import org.bukkit.util.Vector;
 
 public class GardenDeserializer extends StdDeserializer<Garden> {
+
     public GardenDeserializer() {
         this(null);
     }
@@ -23,7 +24,7 @@ public class GardenDeserializer extends StdDeserializer<Garden> {
 
     @Override
     public Garden deserialize(JsonParser jsonParser, DeserializationContext deserializationContext)
-            throws IOException, JacksonException {
+            throws IOException {
         ObjectMapper om = (ObjectMapper)jsonParser.getCodec();
         JsonNode node = om.readTree(jsonParser);
         JsonNode uuidNode = node.get("uuid");

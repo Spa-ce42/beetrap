@@ -8,6 +8,7 @@ import java.io.IOException;
 import org.bukkit.util.Vector;
 
 public class VectorDeserializer extends StdDeserializer<Vector> {
+
     public VectorDeserializer() {
         this(null);
     }

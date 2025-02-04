@@ -11,29 +11,24 @@ import edu.rochester.beetrap.data.GardenDeserializer;
 import edu.rochester.beetrap.data.GardenSerializer;
 import edu.rochester.beetrap.data.VectorDeserializer;
 import edu.rochester.beetrap.data.VectorSerializer;
-import edu.rochester.beetrap.event.OnPluginDisableCallback;
-import edu.rochester.beetrap.event.OnPluginEnableCallback;
 import edu.rochester.beetrap.model.Flower;
 import edu.rochester.beetrap.model.Garden;
 import edu.rochester.beetrap.repository.NameToGardenMap;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.List;
 import java.util.Random;
 import java.util.UUID;
-import org.bukkit.Material;
-import org.bukkit.World;
 import org.bukkit.util.Vector;
 
-public class GardenService implements OnPluginEnableCallback, OnPluginDisableCallback {
+public class GardenService {
     private final Main main;
-    private NameToGardenMap gardens;
     private final ObjectMapper om;
+    private NameToGardenMap gardens;
 
     public GardenService(Main main) {
         this.main = main;
-        this.main.registerOnPluginEnableCallback(this);
-        this.main.registerOnPluginDisableCallback(this);
         this.gardens = new NameToGardenMap();
         this.om = new ObjectMapper();
         SimpleModule sm = new SimpleModule();
@@ -95,7 +90,7 @@ public class GardenService implements OnPluginEnableCallback, OnPluginDisableCal
         try {
             this.gardens = this.om.readValue(f, NameToGardenMap.class);
         } catch(IOException e) {
-            throw new UncheckedIOException(e);
+            this.gardens = new NameToGardenMap();
         }
     }
 
@@ -103,7 +98,8 @@ public class GardenService implements OnPluginEnableCallback, OnPluginDisableCal
         Garden g = this.gardens.get(gardenName);
         Random r = new Random();
         for(int i = 0; i < n; ++i) {
-            Flower f = new Flower(UUID.randomUUID(), r.nextDouble(), r.nextDouble(), r.nextDouble(), r.nextDouble(), r.nextDouble());
+            Flower f = new Flower(UUID.randomUUID(), r.nextDouble(), r.nextDouble(), r.nextDouble(),
+                    1, r.nextDouble());
             g.putFlower(f.uuid(), f);
         }
     }
@@ -120,13 +116,7 @@ public class GardenService implements OnPluginEnableCallback, OnPluginDisableCal
         return this.gardens.get(gardenName).getFlowers().values().toArray(new Flower[0]);
     }
 
-    @Override
-    public void onPluginDisable() {
-        this.saveGardens("gardens.json");
-    }
-
-    @Override
-    public void onPluginEnable() {
-        this.loadGardens("gardens.json");
+    public List<String> getGardenNames() {
+        return this.gardens.keySet().stream().toList();
     }
 }

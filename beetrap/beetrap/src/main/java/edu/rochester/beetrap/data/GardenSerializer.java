@@ -2,11 +2,12 @@ package edu.rochester.beetrap.data;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.SerializerProvider;
-import edu.rochester.beetrap.model.Garden;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import edu.rochester.beetrap.model.Garden;
 import java.io.IOException;
 
 public class GardenSerializer extends StdSerializer<Garden> {
+
     public GardenSerializer() {
         this(null);
     }

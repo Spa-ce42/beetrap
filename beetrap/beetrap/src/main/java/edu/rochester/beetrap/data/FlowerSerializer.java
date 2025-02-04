@@ -7,6 +7,7 @@ import edu.rochester.beetrap.model.Flower;
 import java.io.IOException;
 
 public class FlowerSerializer extends StdSerializer<Flower> {
+
     public FlowerSerializer() {
         this(null);
     }

@@ -1,5 +1,6 @@
 package edu.rochester.beetrap.model;
 
+import java.util.Collection;
 import java.util.UUID;
 import org.bukkit.util.Vector;
 
@@ -8,17 +9,20 @@ public class Garden {
     private final String name;
     private final Vector topLeft, bottomRight;
     private final UUIDToFlowerMap flowers;
+    private double flowerDiversity;
 
     public Garden(String name, Vector topLeft, Vector bottomRight) {
         this(UUID.randomUUID(), name, topLeft, bottomRight, new UUIDToFlowerMap());
     }
 
-    public Garden(UUID uuid, String name, Vector topLeft, Vector bottomRight, UUIDToFlowerMap flowers) {
+    public Garden(UUID uuid, String name, Vector topLeft, Vector bottomRight,
+            UUIDToFlowerMap flowers) {
         this.uuid = uuid;
         this.name = name;
         this.topLeft = topLeft;
         this.bottomRight = bottomRight;
         this.flowers = flowers;
+        this.flowerDiversity = -1;
     }
 
     public UUID getUuid() {
@@ -43,5 +47,51 @@ public class Garden {
 
     public void putFlower(UUID uuid, Flower f) {
         this.flowers.put(uuid, f);
+        this.flowerDiversity = -1;
+    }
+
+    public Flower getFlower(UUID uuid) {
+        return this.flowers.get(uuid);
+    }
+
+    public void removeFlower(UUID uuid) {
+        this.flowers.remove(uuid);
+        this.flowerDiversity = -1;
+    }
+
+    public void clearFlowers() {
+        this.flowers.clear();
+        this.flowerDiversity = 0;
+    }
+
+    public double getFlowerDiversity() {
+        if(this.flowerDiversity < 0) {
+            double averageX = 0;
+            double averageZ = 0;
+            Collection<Flower> flowers = this.flowers.values();
+            int n = flowers.size();
+
+            for(Flower f : flowers) {
+                averageX = averageX + f.x() * 100;
+                averageZ = averageZ + f.z() * 100;
+            }
+
+            averageX = averageX / n;
+            averageZ = averageZ / n;
+
+            double totalDistance = 0;
+
+            for(Flower f : flowers) {
+                double x = f.x() * 100 - averageX;
+                x = x * x;
+                double z = f.z() * 100 - averageZ;
+                z = z * z;
+                totalDistance = totalDistance + Math.sqrt(x + z);
+            }
+
+            this.flowerDiversity = totalDistance;
+        }
+
+        return this.flowerDiversity;
     }
 }

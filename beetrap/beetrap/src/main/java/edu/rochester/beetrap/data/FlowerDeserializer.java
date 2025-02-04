@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.util.UUID;
 
 public class FlowerDeserializer extends StdDeserializer<Flower> {
+
     public FlowerDeserializer() {
         this(null);
     }

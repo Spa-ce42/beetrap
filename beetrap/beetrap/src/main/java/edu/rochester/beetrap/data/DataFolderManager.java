@@ -1,8 +1,6 @@
 package edu.rochester.beetrap.data;
 
 import edu.rochester.beetrap.Main;
-import edu.rochester.beetrap.event.OnPluginDisableCallback;
-import edu.rochester.beetrap.event.OnPluginEnableCallback;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
@@ -15,17 +13,18 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import org.bukkit.event.Listener;
 
-public class DataFolderManager implements OnPluginEnableCallback, OnPluginDisableCallback {
+public class DataFolderManager implements Listener {
+
     @SuppressWarnings("FieldCanBeLocal")
     private final Main main;
     private final File dataFolder;
 
     public DataFolderManager(Main main) {
         this.main = main;
-        this.main.registerOnPluginEnableCallback(this);
-        this.main.registerOnPluginDisableCallback(this);
         this.dataFolder = this.main.getDataFolder();
+        this.main.getServer().getPluginManager().registerEvents(this, this.main);
     }
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
@@ -71,12 +70,10 @@ public class DataFolderManager implements OnPluginEnableCallback, OnPluginDisabl
         }
     }
 
-    @Override
     public void onPluginEnable() {
         this.ensureDataFolderExists();
     }
 
-    @Override
     public void onPluginDisable() {
         this.ensureDataFolderExists();
     }

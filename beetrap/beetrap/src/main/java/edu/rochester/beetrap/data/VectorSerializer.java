@@ -7,6 +7,7 @@ import java.io.IOException;
 import org.bukkit.util.Vector;
 
 public class VectorSerializer extends StdSerializer<Vector> {
+
     public VectorSerializer() {
         this(null);
     }

@@ -1,5 +1,5 @@
 name: beetrap
-version: '1.0'
+version: '1.1'
 main: edu.rochester.beetrap.Main
 api-version: '1.20'
 commands:
@@ -9,3 +9,6 @@ commands:
   garden:
     description: Manage gardens
     usage: /<command> <create|destroy|list>
+  game:
+    description: create an instance of Beetrap Minecraft
+    usage: /<command> <new|destroy>
