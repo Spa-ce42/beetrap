@@ -1,0 +1,14 @@
+name: beetrap
+version: '1.1'
+main: edu.rochester.beetrap.Main
+api-version: '1.20'
+commands:
+  draw_quad:
+    description: Draws a quad with glass blocks
+    usage: /<command> <xCenter> <yCenter> <zCenter> <sideLengthToCenter>
+  garden:
+    description: Manage gardens
+    usage: /<command> <create|destroy|list>
+  game:
+    description: create an instance of Beetrap Minecraft
+    usage: /<command> <new|destroy>
