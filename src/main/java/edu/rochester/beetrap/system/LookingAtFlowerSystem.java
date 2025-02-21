@@ -4,7 +4,6 @@ import edu.rochester.beetrap.Garden;
 import edu.rochester.beetrap.component.flower.FlowerValueComponent;
 import edu.rochester.beetrap.component.flower.FlowerUuidComponent;
 import edu.rochester.beetrap.component.player.LookingAtFlowerComponent;
-import edu.rochester.beetrap.component.player.PlayerGardenComponent;
 import edu.rochester.beetrap.controller.BeetrapWorld;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -17,9 +16,8 @@ public class LookingAtFlowerSystem {
         this.beetrapWorld = beetrapWorld;
     }
 
-    public void onPlayerLookAtEntity(Player player, Entity targetMinecraftEntity) {
+    public void onPlayerLookAtEntity(Garden garden, Player player, Entity targetMinecraftEntity) {
         dev.dominion.ecs.api.Entity playerEcsEntity = this.beetrapWorld.getPlayerEcsEntity(player);
-        Garden garden = playerEcsEntity.get(PlayerGardenComponent.class).garden();
         dev.dominion.ecs.api.Entity targetEcsEntity = garden.getEcsEntityByMinecraftEntity(targetMinecraftEntity);
 
         if(targetEcsEntity == null || !targetEcsEntity.has(FlowerValueComponent.class)) {

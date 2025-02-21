@@ -9,11 +9,9 @@ import edu.rochester.beetrap.Main;
 import edu.rochester.beetrap.component.player.HighlightEntityComponent;
 import edu.rochester.beetrap.component.player.IsPollinatingComponent;
 import edu.rochester.beetrap.component.player.LookingAtFlowerComponent;
-import edu.rochester.beetrap.component.player.PlayerGardenComponent;
 import edu.rochester.beetrap.component.player.PlayerComponent;
 import edu.rochester.beetrap.system.HighlightEntitySystem;
 import edu.rochester.beetrap.system.LookingAtFlowerSystem;
-import java.util.function.Consumer;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -82,33 +80,12 @@ public class BeetrapWorld implements Listener {
         return null;
     }
 
-    public void setPlayerGarden(Player player, Garden garden) {
-        Entity playerEcsEntity = this.getPlayerEcsEntity(player);
-        playerEcsEntity.removeType(PlayerGardenComponent.class);
-        playerEcsEntity.add(new PlayerGardenComponent(garden));
-    }
-
-    public void setAllPlayerGarden(Garden garden) {
-        Results<With1<PlayerComponent>> r = this.dominion.findEntitiesWith(PlayerComponent.class);
-
-        for(With1<PlayerComponent> pc : r) {
-            Entity entity = pc.entity();
-            entity.removeType(PlayerGardenComponent.class);
-            entity.add(new PlayerGardenComponent(garden));
-        }
-    }
-
-    public Garden getPlayerGarden(Player player) {
-        Entity playerEcsEntity = this.getPlayerEcsEntity(player);
-        return playerEcsEntity.get(PlayerGardenComponent.class).garden();
-    }
-
     public void highlight(Player player, org.bukkit.entity.Entity targetMinecraftEntity) {
         this.highlightEntitySystem.highlight(player, targetMinecraftEntity);
     }
 
-    public void onPlayerLookAtEntity(Player player, org.bukkit.entity.Entity targetMinecraftEntity) {
-        this.lookingAtFlowerSystem.onPlayerLookAtEntity(player, targetMinecraftEntity);
+    public void onPlayerLookAtEntity(Garden garden, Player player, org.bukkit.entity.Entity targetMinecraftEntity) {
+        this.lookingAtFlowerSystem.onPlayerLookAtEntity(garden, player, targetMinecraftEntity);
     }
 
     public World getWorld() {

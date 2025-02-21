@@ -11,7 +11,6 @@ import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Random;
-import java.util.Set;
 import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -57,7 +56,6 @@ public class Game implements Listener {
         g.generateFlowerEcsEntities(20);
         g.spawnFlowerMinecraftEntities(this.world, this::flowerValueToMaterialFunction);
         g.spawnBeeNest(this.world);
-        this.beetrapWorld.setAllPlayerGarden(g);
         this.main.getServer().getPluginManager().registerEvents(this, this.main);
     }
 
@@ -69,7 +67,6 @@ public class Game implements Listener {
         currentGarden.forEachFlowerValue((iu, fd) -> {
             newGarden.putFlowerEcsEntity(iu, fd.v(), fd.w(), fd.x(), fd.y(), fd.z());
         });
-        this.beetrapWorld.setAllPlayerGarden(newGarden);
         newGarden.spawnFlowerMinecraftEntities(this.world, this::flowerValueToMaterialFunction);
         newGarden.setBeeNest(currentGarden.getBeeNest());
         currentGarden.setBeeNest(null);
@@ -195,7 +192,6 @@ public class Game implements Listener {
         Garden ogGarden = this.gardens.get(this.turn);
         ogGarden.spawnFlowerMinecraftEntities(this.beetrapWorld.getWorld(), this::flowerValueToMaterialFunction);
         ogGarden.spawnBeeNest(this.world);
-        this.beetrapWorld.setAllPlayerGarden(ogGarden);
     }
 
     private void nextGarden() {
@@ -207,7 +203,6 @@ public class Game implements Listener {
         Garden ngGarden = this.gardens.get(this.turn);
         ngGarden.spawnFlowerMinecraftEntities(this.beetrapWorld.getWorld(), this::flowerValueToMaterialFunction);
         ngGarden.spawnBeeNest(this.world);
-        this.beetrapWorld.setAllPlayerGarden(ngGarden);
     }
 
     @EventHandler
@@ -275,7 +270,7 @@ public class Game implements Listener {
         }
 
         try {
-            this.beetrapWorld.onPlayerLookAtEntity(player, targetMinecraftEntity);
+            this.beetrapWorld.onPlayerLookAtEntity(this.gardens.get(this.turn), player, targetMinecraftEntity);
 
             Inventory playerInventory = player.getInventory();
             ItemStack playerInventoryMiddleSlot = playerInventory.getItem(4);
