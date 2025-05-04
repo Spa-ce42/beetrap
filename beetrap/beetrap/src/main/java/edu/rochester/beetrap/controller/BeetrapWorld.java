@@ -6,14 +6,17 @@ import edu.rochester.beetrap.data.GardenEntitiesData;
 import edu.rochester.beetrap.model.Flower;
 import edu.rochester.beetrap.model.Garden;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.World;
 import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.Bee;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.FallingBlock;
 import org.bukkit.entity.Player;
@@ -31,6 +34,7 @@ public class BeetrapWorld implements Listener {
     private final World world;
     private final Map<String, BeetrapPlayerData> nameToBeetrapPlayerMap;
     private final Map<String, GardenEntitiesData> nameToGardenEntitiesMap;
+    private Bee bee;
 
     public BeetrapWorld(Main main, World world) {
         this.main = main;
@@ -77,6 +81,29 @@ public class BeetrapWorld implements Listener {
         GardenEntitiesData ged = this.nameToGardenEntitiesMap.computeIfAbsent(g.getName(),
                 k -> new GardenEntitiesData());
         ged.addFlower(f.uuid(), fallingBlock);
+    }
+
+    public void spawnBud(Garden g, Flower f, double x, double y, double z,
+            Material material, String customName) {
+        // Create a Location object with the desired coordinates
+        Location location = new Location(world, x, y, z);
+        // Spawn the falling block using spawnEntity method
+        FallingBlock fallingBlock = world.spawnFallingBlock(location, material.createBlockData());
+        fallingBlock.teleport(location);
+
+        // Optional: Set additional properties
+        fallingBlock.setGravity(false); // Disable gravity
+        fallingBlock.setTicksLived(Integer.MAX_VALUE); // Prevent despawning
+
+        fallingBlock.setMetadata("garden", new FixedMetadataValue(this.main, g.getName()));
+        fallingBlock.setMetadata("flower", new FixedMetadataValue(this.main, f.uuid()));
+
+        fallingBlock.setCustomNameVisible(!customName.isBlank());
+        fallingBlock.setCustomName(customName);
+
+        GardenEntitiesData ged = this.nameToGardenEntitiesMap.computeIfAbsent(g.getName(),
+                k -> new GardenEntitiesData());
+        ged.addEntity(fallingBlock);
     }
 
     public void spawnBeetrapBeeNest(Garden g) {
@@ -172,7 +199,7 @@ public class BeetrapWorld implements Listener {
             double x = garden.getTopLeft().getX() + width * f.x();
             double z = garden.getTopLeft().getZ() + length * f.z();
             this.spawnFlower(garden, f, x, garden.getTopLeft().getBlockY(),
-                    z, ftmf.apply(f));
+                    z, ftmf.apply(garden, f));
         }
     }
 
@@ -187,6 +214,17 @@ public class BeetrapWorld implements Listener {
                 z, material);
     }
 
+    public void drawBud(Garden garden, Flower f, Material material, String customName) {
+        double width =
+                garden.getBottomRight().getX() - garden.getTopLeft().getX() + 1;
+        double length =
+                garden.getBottomRight().getZ() - garden.getTopLeft().getZ() + 1;
+        double x = garden.getTopLeft().getX() + width * f.x();
+        double z = garden.getTopLeft().getZ() + length * f.z();
+        this.spawnBud(garden, f, x, garden.getTopLeft().getBlockY(),
+                z, material, customName);
+    }
+
     public void spawnParticle(Garden garden, Particle particle, double xNormalized, double zNormalized, int count) {
         double width =
                 garden.getBottomRight().getX() - garden.getTopLeft().getX() + 1;
@@ -197,11 +235,53 @@ public class BeetrapWorld implements Listener {
         this.world.spawnParticle(particle, x, garden.getTopLeft().getBlockY(), z, count);
     }
 
+    public void spawnParticleCircle(Particle particle, double x, double y, double z, double r, double epsilon) {
+        double theta = 0;
+
+        while(theta < Math.TAU) {
+            double xi = x + r * Math.cos(theta);
+            double zi = z + r * Math.sin(theta);
+
+            this.world.spawnParticle(particle, xi, y, zi, 1);
+
+            theta = theta + epsilon;
+        }
+    }
+
     public void constructGarden(String name) {
         this.nameToGardenEntitiesMap.put(name, new GardenEntitiesData());
     }
 
     public GardenEntitiesData getGardenEntitiesData(String name) {
         return this.nameToGardenEntitiesMap.get(name);
+    }
+
+    public void spawnBee(Player player, String s) {
+        if(this.bee != null) {
+            this.bee.remove();
+        }
+
+        this.bee = this.world.spawn(player.getLocation(), Bee.class);
+        bee.setCustomName(s);
+        bee.setCustomNameVisible(true);
+        bee.setAI(false);
+    }
+
+    public void setBeeDialogue(String s) {
+        this.bee.setCustomName(s);
+    }
+
+    public void setBeeDialogues(List<String> s) {
+        Bukkit.getScheduler().runTaskAsynchronously(this.main, () -> {
+            for(String t : s) {
+                BeetrapWorld.this.bee.setCustomName(t);
+
+                try {
+                    Thread.sleep(2000);
+                } catch(InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
     }
 }

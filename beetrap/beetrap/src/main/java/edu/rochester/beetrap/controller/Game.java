@@ -7,7 +7,6 @@ import edu.rochester.beetrap.model.Flower;
 import edu.rochester.beetrap.model.Garden;
 import edu.rochester.beetrap.service.GardenService;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
@@ -16,6 +15,7 @@ import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Random;
 import java.util.UUID;
+import javax.naming.ldap.LdapContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bukkit.Bukkit;
@@ -23,6 +23,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.FallingBlock;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -41,20 +42,50 @@ import org.jetbrains.annotations.NotNull;
 public class Game implements Listener {
     private static final Material POLLINATE_ACTION_MATERIAL = Material.BEE_NEST;
     private final Main main;
-    private GardenService gs;
-    private BeetrapWorld bw;
-    private String gardenPrefix;
-    private List<Garden> gardens;
-    private List<GardenEntitiesData> gardenEntitiesData;
+    private final GardenService gs;
+    private final BeetrapWorld bw;
+    private final String gardenPrefix;
+    private final List<Garden> gardens;
+    private final List<GardenEntitiesData> gardenEntitiesData;
     private int turn;
     private static final Logger LOG = LogManager.getLogger(Game.class);
-    private static final FlowerToMaterialFunction FTMT = f -> {
+    private final Random r = new Random();
+    private static final Material[] FLOWER_MATERIALS = {
+            Material.DANDELION, Material.POPPY, Material.BLUE_ORCHID, Material.AZURE_BLUET,
+            Material.RED_TULIP, Material.ORANGE_TULIP, Material.WHITE_TULIP, Material.PINK_TULIP,
+            Material.OXEYE_DAISY, Material.LILY_OF_THE_VALLEY, Material.TORCHFLOWER, Material.PINK_PETALS
+    };
+    private Material pollinatedFlowerMaterial;
+    private final FlowerToMaterialFunction ftmf = (g, f) -> {
+        if(g.getMaterial(f.uuid()) != null) {
+            return g.getMaterial(f.uuid());
+        }
+
         if(f.y() <= 0) {
             return Material.WITHER_ROSE;
         }
 
-        return Material.POPPY;
+        if(Math.abs(f.y() - 0.5) <= 0.1) {
+            return Material.MANGROVE_PROPAGULE;
+        }
+
+        if(this.diversifiedRanking) {
+            int i = this.r.nextInt(FLOWER_MATERIALS.length);
+            return FLOWER_MATERIALS[i];
+        }
+
+        if(Game.this.turn == 0) {
+            int i = this.r.nextInt(FLOWER_MATERIALS.length);
+            return FLOWER_MATERIALS[i];
+        }
+
+        return this.pollinatedFlowerMaterial;
     };
+
+    private List<Flower> newFlowers;
+
+    private boolean diversifiedRanking;
+    private boolean largeRadius;
 
     public Game(Main main, GardenService gs, BeetrapWorld bw, String gardenPrefix) {
         this.main = main;
@@ -68,7 +99,7 @@ public class Game implements Listener {
         Garden g = this.gs.getGarden(this.gardenPrefix + "_" + this.turn);
         this.gardens.add(g);
         this.gs.generateFlowers(this.gardenPrefix + "_" + this.turn, 20);
-        this.bw.drawFlowers(g, FTMT);
+        this.bw.drawFlowers(g, ftmf);
         this.bw.spawnBeetrapBeeNestAsFallingBlock(g);
 
         this.main.getServer().getPluginManager().registerEvents(this, this.main);
@@ -100,10 +131,52 @@ public class Game implements Listener {
         }
     }
 
+    /**
+     * Spawns flowers close to a particular flower f in terms of the x and z values of f.
+     * The new flowers will be spawned within a ring of the f.
+     * @param f the original flower
+     * @param n number of new flowers
+     * @param inr the inner radius that defines the ring, normalized to [0, 1]
+     * @param onr the outer radius, normalized
+     * @return the list of new flowers
+     */
+    private List<Flower> spawnFlowersCloseTo(Flower f, int n, double inr, double onr) {
+        List<Flower> flowers = new ArrayList<>();
+        for(int i = 0; i < n; ++i) {
+            double r = this.r.nextDouble(inr, onr);
+            double theta = this.r.nextDouble(0, Math.TAU);
+            Flower flower = new Flower(UUID.randomUUID(), this.r.nextDouble(), this.r.nextDouble(),r * Math.cos(theta) + f.x(), 1, r * Math.sin(theta) + f.z());
+            flowers.add(flower);
+        }
+
+        flowers.sort((f1, f2) -> {
+            double df1 = Math.sqrt(
+                    (f.x() - f1.x()) * (f.x() - f1.x()) + (f.z() - f1.z()) * (f.z() - f1.z()));
+            double df2 = Math.sqrt(
+                    (f.x() - f2.x()) * (f.x() - f2.x()) + (f.z() - f2.z()) * (f.z() - f2.z()));
+
+            int d = (int)(df1 - df2);
+
+            if(d != 0) {
+                return d;
+            }
+
+            if(df1 - df2 > 0) {
+                return 1;
+            } else if(df1 - df2 < 0) {
+                return -1;
+            }
+
+            return 0;
+        });
+
+        return flowers;
+    }
+
     private void pollinate(Flower f) {
         Garden g = this.gardens.get(this.turn);
         Flower[] h = g.getFlowers().values().toArray(new Flower[0]);
-        int amountOfFlowersToKill = (int)Math.ceil(h.length * 0.15);
+        int amountOfFlowersToKill = this.diversifiedRanking ? 1 : 5;
         Queue<DistanceAndFlower> flowersToKill = new PriorityQueue<>(
                 (o1, o2) -> -o1.compareTo(o2));
         GardenEntitiesData ged = this.gardenEntitiesData.get(this.turn);
@@ -156,15 +229,27 @@ public class Game implements Listener {
             this.bw.drawFlower(j, daf.f, Material.WITHER_ROSE);
         }
 
-        Random random = new Random();
-        for(int i = 0; i < amountOfFlowersToKill; ++i) {
-            double r = random.nextDouble(0.01, 0.1);
-            double theta = random.nextDouble(0, Math.TAU);
-            Flower flower = new Flower(UUID.randomUUID(), random.nextDouble(), random.nextDouble(),r * Math.cos(theta) + f.x(), 1, r * Math.sin(theta) + f.z());
-            j.putFlower(flower.uuid(), flower);
-            this.bw.drawFlower(j, flower, Material.POPPY);
-            this.bw.spawnParticle(j, Particle.COMPOSTER, flower.x(), flower.z(), 1);
+
+        int i = 0;
+        for(Flower newFlower : this.newFlowers) {
+            if(!this.diversifiedRanking) {
+                if(i >= 3) {
+                    ++i;
+                    continue;
+                }
+            } else {
+                if(!(5 < i && i < 9)) {
+                    ++i;
+                    continue;
+                }
+            }
+
+            j.putFlower(newFlower.uuid(), newFlower);
+            this.bw.drawFlower(j, newFlower, this.ftmf.apply(g, newFlower));
+            ++i;
         }
+
+        this.gardenEntitiesData.get(this.turn - 1).removeEntities();
     }
 
     private void onPlayerPollinate(Player p) {
@@ -194,13 +279,53 @@ public class Game implements Listener {
 
         bpd.getIsPollinating().set(true);
 
+        FallingBlock fb = (FallingBlock)e;
+        this.pollinatedFlowerMaterial = fb.getBlockData().getMaterial();
+
         Bukkit.getScheduler().runTaskLater(this.main, () -> {
             bt.cancel();
             f.setVelocity(new Vector());
             eLocation.setY(fLocation.getY());
             f.teleport(eLocation);
-            bpd.getIsPollinating().set(false);
-            Game.this.pollinate(g.getFlower((UUID)e.getMetadata("flower").getFirst().value()));
+
+            Flower originalFlower = g.getFlower((UUID)e.getMetadata("flower").getFirst().value());
+            this.newFlowers = Game.this.spawnFlowersCloseTo(originalFlower, 30, 0.01, this.largeRadius ? 0.3 : 0.2);
+
+            int i = 0, j = 1, k = 3;
+            for(Flower bud : this.newFlowers) {
+                if(!this.diversifiedRanking) {
+                    if(i < 3) {
+                        this.bw.drawBud(g, bud, this.ftmf.apply(g,
+                                new Flower(bud.uuid(), bud.v(), bud.w(), bud.x(), 0.5,
+                                        bud.z())), String.valueOf(j++));
+                    }
+                    this.bw.drawBud(g, bud, this.ftmf.apply(g,
+                                    new Flower(bud.uuid(), bud.v(), bud.w(), bud.x(), 0.5, bud.z())),
+                            "");
+                } else {
+                    if(5 < i && i < 9) {
+                        this.bw.drawBud(g, bud, this.ftmf.apply(g,
+                                new Flower(bud.uuid(), bud.v(), bud.w(), bud.x(), 0.5,
+                                        bud.z())), String.valueOf(k--));
+                    }
+                    this.bw.drawBud(g, bud, this.ftmf.apply(g,
+                                    new Flower(bud.uuid(), bud.v(), bud.w(), bud.x(), 0.5, bud.z())),
+                            "");
+                }
+
+                ++i;
+            }
+
+            BukkitTask spawnParticleCircleTask = Bukkit.getScheduler().runTaskTimerAsynchronously(this.main, () -> {
+                Game.this.bw.spawnParticleCircle(Particle.FALLING_HONEY, eLocation.getX(), eLocation.getY(), eLocation.getZ(), this.largeRadius ? 3 : 1.5, 0.05);
+            }, 0, 20);
+
+            Bukkit.getScheduler().runTaskLater(this.main, () -> {
+                spawnParticleCircleTask.cancel();
+                Game.this.pollinate(originalFlower);
+                bpd.getIsPollinating().set(false);
+            }, 300);
+
         }, 60);
     }
 
@@ -233,9 +358,28 @@ public class Game implements Listener {
             if(itemInMainHandMaterial == POLLINATE_ACTION_MATERIAL) {
                 this.onPlayerPollinate(p);
                 this.setPlayerInventory(p, 0, Material.CLOCK, 1, "Back");
+                this.setPlayerInventory(p, 2, Material.LADDER, 1, "Change Ranking");
+                this.setPlayerInventory(p, 6, Material.STRING, 1, "Change Pollination Radius");
                 this.setPlayerInventory(p, 8, Material.CLOCK, 1, "Forward");
 
                 return;
+            }
+
+            if(itemInMainHandMaterial == Material.LADDER) {
+                int i = p.getInventory().getHeldItemSlot();
+                if(i == 2) {
+                    this.diversifiedRanking = !this.diversifiedRanking;
+                    p.sendMessage("Diversified rankings " + (this.diversifiedRanking ? "enabled" : "disabled") + "!");
+                }
+            }
+
+            if(itemInMainHandMaterial == Material.STRING) {
+                int i = p.getInventory().getHeldItemSlot();
+
+                if(i == 6) {
+                    this.largeRadius = !this.largeRadius;
+                    p.sendMessage("Pollination radius " + (this.diversifiedRanking ? "enlarged" : "shrank") + "!");
+                }
             }
 
             if(itemInMainHandMaterial == Material.CLOCK) {
@@ -253,7 +397,7 @@ public class Game implements Listener {
                     --this.turn;
 
                     Garden g = this.gardens.get(this.turn);
-                    this.bw.drawFlowers(g, FTMT);
+                    this.bw.drawFlowers(g, ftmf);
                     this.bw.spawnBeetrapBeeNestAsFallingBlock(g);
                     return;
                 }
@@ -270,7 +414,7 @@ public class Game implements Listener {
                     ++this.turn;
 
                     Garden g = this.gardens.get(this.turn);
-                    this.bw.drawFlowers(g, FTMT);
+                    this.bw.drawFlowers(g, ftmf);
                     this.bw.spawnBeetrapBeeNestAsFallingBlock(g);
                     return;
                 }
@@ -298,7 +442,6 @@ public class Game implements Listener {
         if(entity != null) {
             try {
                 List<MetadataValue> mw = entity.getMetadata("flower");
-
                 UUID uuid = (UUID)mw.getFirst().value();
                 Garden garden = this.gardens.get(this.turn);
                 String gardenName = garden.getName();

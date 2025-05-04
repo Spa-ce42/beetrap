@@ -14,7 +14,6 @@ public final class Main extends JavaPlugin implements Listener {
         this.getServer().getPluginManager().registerEvents(this, this);
         this.dataFolderManager = new DataFolderManager(this);
         this.gardenManager = new GardenController(this);
-
         this.dataFolderManager.onPluginEnable();
         this.gardenManager.onPluginEnable();
     }

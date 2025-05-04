@@ -1,17 +1,21 @@
 package edu.rochester.beetrap.data;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.bukkit.entity.Entity;
 
 public class GardenEntitiesData {
     private final Map<UUID, Entity> flowers;
+    private final List<Entity> entities;
     private Entity beeNest;
 
     public GardenEntitiesData() {
         this.flowers = new HashMap<>();
+        this.entities = new ArrayList<>();
     }
 
     public boolean addFlower(UUID uuid, Entity e) {
@@ -65,6 +69,18 @@ public class GardenEntitiesData {
         }
 
         this.flowers.clear();
+    }
+
+    public void addEntity(Entity e) {
+        this.entities.add(e);
+    }
+
+    public void removeEntities() {
+        for(Entity e : this.entities) {
+            e.remove();
+        }
+
+        this.entities.clear();
     }
 
     public Map<UUID, Entity> getFlowers() {

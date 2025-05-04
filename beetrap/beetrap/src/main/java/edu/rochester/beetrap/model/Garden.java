@@ -1,7 +1,10 @@
 package edu.rochester.beetrap.model;
 
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
+import org.bukkit.Material;
 import org.bukkit.util.Vector;
 
 public class Garden {
@@ -9,6 +12,7 @@ public class Garden {
     private final String name;
     private final Vector topLeft, bottomRight;
     private final UUIDToFlowerMap flowers;
+    private final Map<UUID, Material> materials;
     private double flowerDiversity;
 
     public Garden(String name, Vector topLeft, Vector bottomRight) {
@@ -23,6 +27,7 @@ public class Garden {
         this.bottomRight = bottomRight;
         this.flowers = flowers;
         this.flowerDiversity = -1;
+        this.materials = new HashMap<>();
     }
 
     public UUID getUuid() {
@@ -57,6 +62,14 @@ public class Garden {
     public void removeFlower(UUID uuid) {
         this.flowers.remove(uuid);
         this.flowerDiversity = -1;
+    }
+
+    public void putFlowerMaterial(UUID uuid, Material material) {
+        this.materials.put(uuid, material);
+    }
+
+    public Material getMaterial(UUID uuid) {
+        return this.materials.get(uuid);
     }
 
     public void clearFlowers() {

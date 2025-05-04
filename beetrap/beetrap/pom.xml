@@ -5,7 +5,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>edu.rochester.beetrap</groupId>
   <artifactId>beetrap</artifactId>
-  <version>1.1</version>
+  <version>1.2</version>
   <packaging>jar</packaging>
 
   <name>beetrap</name>
@@ -63,8 +63,13 @@
   <dependencies>
     <dependency>
       <groupId>org.spigotmc</groupId>
-      <artifactId>spigot</artifactId>
-      <version>1.20.6-R0.1-SNAPSHOT</version>
+      <artifactId>spigot-api</artifactId>
+      <version>1.20.6-R0.1-20240613.150924-57</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-core</artifactId>
+      <version>2.23.1</version>
     </dependency>
     <dependency>
       <groupId>fr.skytasul</groupId>

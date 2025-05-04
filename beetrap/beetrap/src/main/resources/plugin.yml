@@ -12,3 +12,12 @@ commands:
   game:
     description: create an instance of Beetrap Minecraft
     usage: /<command> <new|destroy>
+  bee:
+    description: Spawns a bee saying things
+    usage: /<command> <things>
+  beed:
+    description: Set the dialogue of the unique bee
+    usage: /<command> <things>
+  beeds:
+    description: Set a sequence of dialogues of the unique bee for him to speak
+    usage: /<command> <phrase1> | <phrase2> | ...

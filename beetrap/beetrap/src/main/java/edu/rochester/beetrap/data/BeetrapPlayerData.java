@@ -31,7 +31,7 @@ public class BeetrapPlayerData {
         this.player = player;
         this.scoreboard = Bukkit.getScoreboardManager().getNewScoreboard();
         this.lookingAtFlowerObjective = this.scoreboard.registerNewObjective("flower", "dummy", "Flower");
-        this.lookingAtFlowerObjective.setDisplaySlot(DisplaySlot.SIDEBAR);
+//        this.lookingAtFlowerObjective.setDisplaySlot(DisplaySlot.SIDEBAR);
         this.player.setScoreboard(this.scoreboard);
         this.entryToLookingAtFlowerScoreMap = new HashMap<>();
         this.isPollinating = new AtomicBoolean(false);
@@ -56,6 +56,7 @@ public class BeetrapPlayerData {
     }
 
     public void resetLookingAtFlowerScores() {
+        this.lookingAtFlowerObjective.setDisplaySlot(null);
         for(String entry : this.entryToLookingAtFlowerScoreMap.keySet()) {
             this.scoreboard.resetScores(entry);
         }

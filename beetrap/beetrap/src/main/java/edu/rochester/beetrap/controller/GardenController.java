@@ -5,6 +5,7 @@ import edu.rochester.beetrap.model.Garden;
 import edu.rochester.beetrap.service.GardenService;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Arrays;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -30,6 +31,9 @@ public class GardenController implements CommandExecutor, Listener {
         this.main.getServer().getPluginManager().registerEvents(this, this.main);
         this.main.getCommand("draw_quad").setExecutor(this);
         this.main.getCommand("garden").setExecutor(this);
+        this.main.getCommand("bee").setExecutor(this);
+        this.main.getCommand("beed").setExecutor(this);
+        this.main.getCommand("beeds").setExecutor(this);
         this.tc = new CommandTabCompleter(this.gs);
         this.main.getCommand("garden").setTabCompleter(this.tc);
         this.main.getCommand("game").setExecutor(this);
@@ -150,7 +154,7 @@ public class GardenController implements CommandExecutor, Listener {
                     if(args[0].equalsIgnoreCase("draw_flowers")) {
                         String gardenName = args[1];
                         Garden garden = this.gs.getGarden(gardenName);
-                        this.bw.drawFlowers(garden, (f) -> Material.POPPY);
+                        this.bw.drawFlowers(garden, (g, f) -> Material.POPPY);
                         return true;
                     }
 
@@ -203,6 +207,39 @@ public class GardenController implements CommandExecutor, Listener {
                         return true;
                     }
                 }
+
+                if(command.getName().equalsIgnoreCase("bee")) {
+                    StringBuilder sb = new StringBuilder(args[0]);
+
+                    for(int i = 1; i < args.length; ++i) {
+                        sb.append(' ').append(args[i]);
+                    }
+
+                    this.bw.spawnBee(p, sb.toString());
+                    return true;
+                }
+            }
+
+            if(command.getName().equalsIgnoreCase("beed")) {
+                StringBuilder sb = new StringBuilder(args[0]);
+
+                for(int i = 1; i < args.length; ++i) {
+                    sb.append(' ').append(args[i]);
+                }
+
+                this.bw.setBeeDialogue(sb.toString());
+                return true;
+            }
+
+            if(command.getName().equalsIgnoreCase("beeds")) {
+                StringBuilder sb = new StringBuilder(args[0]);
+
+                for(int i = 1; i < args.length; ++i) {
+                    sb.append(' ').append(args[i]);
+                }
+
+                this.bw.setBeeDialogues(Arrays.stream(sb.toString().split(" \\| ")).toList());
+                return true;
             }
         } catch(Throwable t) {
             StringWriter sw = new StringWriter();
